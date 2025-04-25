@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import AISuggestion from '@/components/ui/ai-suggestion';
 
 interface GoodsService {
   id: string;
@@ -56,7 +56,7 @@ const niceClassifications = [
 ];
 
 const TrademarkGoodsServices: React.FC = () => {
-  const { formData, updateFormData } = useAppContext();
+  const { formData, updateFormData, addAISuggestion } = useAppContext();
   const { toast } = useToast();
   const [showClassSuggestions, setShowClassSuggestions] = useState(false);
   const [businessDescription, setBusinessDescription] = useState(formData.businessDescription || '');
@@ -199,6 +199,51 @@ const TrademarkGoodsServices: React.FC = () => {
     form.setValue('class', classId);
   };
 
+  const handleUseSuggestion = (suggestion: string) => {
+    // Record the suggestion in history
+    addAISuggestion(`goods-services-${Date.now()}`, suggestion);
+    
+    // If the suggestion is about adding details, update the business description
+    if (suggestion.toLowerCase().includes("specific") || 
+        suggestion.toLowerCase().includes("detail") || 
+        suggestion.toLowerCase().includes("mention")) {
+      toast({
+        title: "Suggestion Applied",
+        description: "Consider adding these details to your description",
+      });
+    } else {
+      toast({
+        title: "Suggestion Noted",
+        description: "This recommendation has been saved to your application",
+      });
+    }
+  };
+
+  const handleGoodsServicesSuggestion = (suggestion: string) => {
+    // Get current form value
+    const currentDescription = form.getValues('description');
+    
+    // Apply suggestion intelligently - either as an addition or replacement
+    if (currentDescription && currentDescription.length > 5) {
+      // If we already have text, append the suggestion (modified to fit context)
+      const improvedDesc = suggestion
+        .replace(/^(use|consider|add|include|be more|provide)/i, '')
+        .trim();
+        
+      form.setValue('description', `${currentDescription}. Additionally, ${improvedDesc}`);
+    } else {
+      // If field is empty, just use the suggestion as the starting point
+      form.setValue('description', suggestion
+        .replace(/^(use|consider|add|include|be more|provide)/i, '')
+        .trim());
+    }
+    
+    toast({
+      title: "AI Suggestion Applied",
+      description: "The recommendation has been incorporated into your description",
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* Business Description Section */}
@@ -228,6 +273,13 @@ const TrademarkGoodsServices: React.FC = () => {
               <p className="text-xs text-muted-foreground">
                 Include detailed information about what you sell or provide to customers
               </p>
+              <AISuggestion 
+                fieldType="business-description" 
+                inputValue={businessDescription}
+                description="How our AI recommends improving your description:"
+                onUseSuggestion={handleUseSuggestion}
+                showUseButtons={true}
+              />
             </div>
             <Button onClick={handleSaveBusinessDescription} className="w-full sm:w-auto">
               <Search className="h-4 w-4 mr-2" /> Analyze & Get Suggestions
@@ -298,30 +350,24 @@ const TrademarkGoodsServices: React.FC = () => {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Description
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="h-4 w-4 ml-1 inline-block text-muted-foreground" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-md">
-                                <p>Be specific about the exact goods or services you offer. For example, "Computer software for project management" is better than just "Software".</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </FormLabel>
+                        <FormLabel htmlFor="description">Description of Goods or Services</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
-                            placeholder="Describe specific goods or services covered by your trademark"
-                            className="resize-none min-h-20"
+                            placeholder="Describe the specific goods or services covered by your trademark"
                           />
                         </FormControl>
                         <FormDescription>
-                          Clearly describe what you provide to customers
+                          Be specific about what you offer under this trademark
                         </FormDescription>
                         <FormMessage />
+                        <AISuggestion 
+                          fieldType="goods-services" 
+                          inputValue={field.value}
+                          description="AI recommends:"
+                          onUseSuggestion={handleGoodsServicesSuggestion}
+                          showUseButtons={true}
+                        />
                       </FormItem>
                     )}
                   />

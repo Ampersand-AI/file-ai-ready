@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
@@ -8,9 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import AISuggestion from '@/components/ui/ai-suggestion';
+import { useToast } from '@/hooks/use-toast';
 
 const TrademarkBasicInfo: React.FC = () => {
-  const { formData, updateFormData } = useAppContext();
+  const { formData, updateFormData, addAISuggestion } = useAppContext();
+  const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     updateFormData({ [e.target.name]: e.target.value });
@@ -18,6 +20,52 @@ const TrademarkBasicInfo: React.FC = () => {
 
   const handleSelectChange = (name: string, value: string) => {
     updateFormData({ [name]: value });
+  };
+  
+  const handleUseSuggestion = (suggestion: string) => {
+    // Record the suggestion in application history
+    addAISuggestion(`trademark-${formData.markName || 'application'}`, suggestion);
+    
+    // Extract action from suggestion when possible
+    if (suggestion.toLowerCase().includes("check") || suggestion.includes("verify")) {
+      // Add a verification task
+      const existingTasks = formData.verificationTasks || [];
+      updateFormData({ 
+        verificationTasks: [...existingTasks, {
+          id: Date.now().toString(),
+          description: suggestion,
+          completed: false,
+          source: 'ai',
+          timestamp: new Date().toISOString()
+        }]
+      });
+      
+      toast({
+        title: "Task Created",
+        description: "Added a verification task based on AI suggestion",
+      });
+    } else if (suggestion.toLowerCase().includes("consider")) {
+      // Add suggestion to consideration list
+      const considerations = formData.considerations || [];
+      updateFormData({
+        considerations: [...considerations, {
+          id: Date.now().toString(),
+          text: suggestion,
+          source: 'ai',
+          timestamp: new Date().toISOString()
+        }]
+      });
+      
+      toast({
+        title: "Consideration Added",
+        description: "This insight has been saved to your application notes",
+      });
+    } else {
+      toast({
+        title: "Suggestion Applied",
+        description: "The AI recommendation has been noted in your application",
+      });
+    }
   };
 
   return (
@@ -30,6 +78,13 @@ const TrademarkBasicInfo: React.FC = () => {
           placeholder="Enter the exact text of your trademark"
           value={formData.markName || ''}
           onChange={handleChange}
+        />
+        <AISuggestion 
+          fieldType="trademark-name" 
+          inputValue={formData.markName}
+          description="Based on your trademark name, our AI suggests:"
+          onUseSuggestion={handleUseSuggestion}
+          showUseButtons={true}
         />
       </div>
 
@@ -91,6 +146,13 @@ const TrademarkBasicInfo: React.FC = () => {
             <SelectItem value="association">Association</SelectItem>
           </SelectContent>
         </Select>
+        <AISuggestion 
+          fieldType="owner-info" 
+          inputValue={formData.ownerName}
+          description="AI recommendations for owner information:"
+          onUseSuggestion={handleUseSuggestion}
+          showUseButtons={true}
+        />
       </div>
 
       <div className="space-y-4">
@@ -123,28 +185,23 @@ const TrademarkBasicInfo: React.FC = () => {
         </Select>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">AI Suggestion</CardTitle>
-          <CardDescription>Based on your trademark name, consider:</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {formData.markName ? (
-            <ul className="list-disc ml-5 text-sm text-muted-foreground">
-              <li>Check for potential conflicts with existing marks</li>
-              <li>Consider broader protection with slight variations</li>
-              <li>Ensure your mark is distinctive and not merely descriptive</li>
-              {formData.markType === 'design' && (
-                <li>Use vector format for your logo upload for best results</li>
-              )}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Enter your trademark details to receive AI suggestions
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Display any saved considerations */}
+      {formData.considerations && formData.considerations.length > 0 && (
+        <div className="bg-muted/30 p-4 rounded-md border">
+          <h3 className="text-sm font-medium mb-2">Saved Considerations</h3>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            {formData.considerations.slice(0, 3).map((item: any) => (
+              <li key={item.id} className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>{item.text}</span>
+              </li>
+            ))}
+            {formData.considerations.length > 3 && (
+              <li className="text-xs italic">+ {formData.considerations.length - 3} more consideration(s)</li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import UploadsPage from "./pages/UploadsPage";
 import CompliancePage from "./pages/CompliancePage";
 import FilingPage from "./pages/FilingPage";
 import NotFound from "./pages/NotFound";
+import APIToggle from "./components/APIToggle";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +31,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        {/* API Toggle for development only - only visible in dev mode */}
+        <APIToggle />
       </TooltipProvider>
     </AppProvider>
   </QueryClientProvider>

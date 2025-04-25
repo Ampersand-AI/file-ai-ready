@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -14,9 +13,10 @@ import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import AISuggestion from '@/components/ui/ai-suggestion';
 
 const TrademarkUsage: React.FC = () => {
-  const { formData, updateFormData } = useAppContext();
+  const { formData, updateFormData, addAISuggestion } = useAppContext();
   const { toast } = useToast();
   const [firstUseDate, setFirstUseDate] = useState<Date | undefined>(
     formData.firstUseDate ? new Date(formData.firstUseDate) : undefined
@@ -52,6 +52,35 @@ const TrademarkUsage: React.FC = () => {
       title: "Upload required",
       description: "Please go to the Upload Manager to add specimens showing use of your mark",
     });
+  };
+
+  const handleUsageSuggestion = (suggestion: string) => {
+    addAISuggestion(`usage-evidence-${Date.now()}`, suggestion);
+    
+    if (suggestion.toLowerCase().includes("specimen") || 
+        suggestion.toLowerCase().includes("evidence") || 
+        suggestion.toLowerCase().includes("example")) {
+      if (suggestion.toLowerCase().includes("website")) {
+        handleCheckboxChange('specimenWebsite', true);
+      }
+      if (suggestion.toLowerCase().includes("packaging") || 
+          suggestion.toLowerCase().includes("product")) {
+        handleCheckboxChange('specimenProduct', true);
+      }
+      if (suggestion.toLowerCase().includes("advertis")) {
+        handleCheckboxChange('specimenAdvertising', true);
+      }
+      
+      toast({
+        title: "Evidence Requirement Added",
+        description: "Updated your specimen list based on AI recommendation",
+      });
+    } else {
+      toast({
+        title: "Suggestion Applied",
+        description: "The AI recommendation has been recorded",
+      });
+    }
   };
 
   return (
@@ -144,6 +173,13 @@ const TrademarkUsage: React.FC = () => {
           placeholder="Describe how the mark appears on goods, packaging, or in connection with services"
           value={formData.usageDescription || ''}
           onChange={(e) => updateFormData({ usageDescription: e.target.value })}
+        />
+        <AISuggestion 
+          fieldType="usage-evidence" 
+          inputValue={formData.usageDescription}
+          description="AI suggests for trademark usage:"
+          onUseSuggestion={handleUsageSuggestion}
+          showUseButtons={true}
         />
       </div>
 

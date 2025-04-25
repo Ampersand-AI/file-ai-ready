@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type FilingType = 'patent' | 'trademark' | null;
@@ -24,6 +23,8 @@ export interface AppContextType {
   removeFile: (id: string) => void;
   complianceScore: number;
   updateComplianceScore: (score: number) => void;
+  aiSuggestionHistory: Record<string, string[]>;
+  addAISuggestion: (fieldId: string, suggestion: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +35,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [uploadedFiles, setUploadedFiles] = useState<IFileUpload[]>([]);
   const [complianceScore, setComplianceScore] = useState(0);
+  const [aiSuggestionHistory, setAISuggestionHistory] = useState<Record<string, string[]>>({});
 
   const updateFormData = (data: Record<string, any>) => {
     setFormData((prev) => ({
@@ -54,6 +56,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setComplianceScore(score);
   };
 
+  const addAISuggestion = (fieldId: string, suggestion: string) => {
+    setAISuggestionHistory((prev) => {
+      const existingSuggestions = prev[fieldId] || [];
+      
+      // Don't add duplicate suggestions
+      if (existingSuggestions.includes(suggestion)) {
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        [fieldId]: [...existingSuggestions, suggestion],
+      };
+    });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -68,6 +86,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         removeFile,
         complianceScore,
         updateComplianceScore,
+        aiSuggestionHistory,
+        addAISuggestion,
       }}
     >
       {children}

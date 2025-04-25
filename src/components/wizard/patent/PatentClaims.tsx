@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AISuggestion from '@/components/ui/ai-suggestion';
 
 interface Claim {
   id: string;
@@ -17,7 +17,7 @@ interface Claim {
 }
 
 const PatentClaims: React.FC = () => {
-  const { formData, updateFormData } = useAppContext();
+  const { formData, updateFormData, addAISuggestion } = useAppContext();
   const { toast } = useToast();
   const [newClaim, setNewClaim] = useState('');
 
@@ -83,8 +83,8 @@ const PatentClaims: React.FC = () => {
     }
 
     toast({
-      title: "Generating suggestions",
-      description: "Our AI is analyzing your invention details...",
+      title: "Generating AI Suggestions",
+      description: "AI is analyzing your invention details...",
     });
 
     // Simulate AI processing delay
@@ -104,8 +104,42 @@ const PatentClaims: React.FC = () => {
     }, 2000);
   };
 
-  const useSuggestion = (suggestion: string) => {
-    setNewClaim(suggestion);
+  const handleUseSuggestion = (suggestion: string) => {
+    // Record the suggestion in application history
+    addAISuggestion(`patent-claims-${Date.now()}`, suggestion);
+    
+    // Apply the suggestion based on content
+    if (suggestion.includes("dependent claim")) {
+      // Create a new dependent claim from an existing claim
+      if (claims.length > 0) {
+        const baseClaimNum = 1; // Default to first claim
+        const baseClaimText = claims[0].text;
+        const suggestionText = suggestion
+          .replace(/^(structure|use|ensure|add|consider|start)/i, '')
+          .trim();
+        
+        const dependentClaimText = `The ${baseClaimText.split(' ')[1] || 'invention'} of claim ${baseClaimNum}, wherein ${suggestionText}`;
+        setNewClaim(dependentClaimText);
+      } else {
+        setNewClaim(suggestion);
+      }
+    } else if (suggestion.includes("independent claim")) {
+      // For independent claim suggestions, try to extract the key elements
+      const inventionTitle = formData.inventionTitle || 'invention';
+      const suggestionText = suggestion
+        .replace(/^(structure|use|ensure|add|consider|start)/i, '')
+        .trim();
+      
+      setNewClaim(`A ${inventionTitle.toLowerCase()} comprising: ${suggestionText}`);
+    } else {
+      // For general suggestions
+      setNewClaim(suggestion);
+    }
+    
+    toast({
+      title: "AI Suggestion Applied",
+      description: "The AI suggestion has been added to your claim text.",
+    });
   };
 
   return (
@@ -142,6 +176,14 @@ const PatentClaims: React.FC = () => {
           onChange={(e) => setNewClaim(e.target.value)}
         />
 
+        <AISuggestion 
+          fieldType="patent-claims" 
+          inputValue={newClaim}
+          description="AI recommendations for your claim:"
+          onUseSuggestion={handleUseSuggestion}
+          showUseButtons={true}
+        />
+
         <Button onClick={handleAddClaim} className="w-full">
           <Plus className="h-4 w-4 mr-2" /> Add Claim
         </Button>
@@ -150,7 +192,7 @@ const PatentClaims: React.FC = () => {
       {formData.claimSuggestions && formData.claimSuggestions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">AI-Suggested Claims</CardTitle>
+            <CardTitle className="text-lg">AI-Generated Claims</CardTitle>
             <CardDescription>
               These claims were generated based on your invention details
             </CardDescription>
@@ -164,7 +206,7 @@ const PatentClaims: React.FC = () => {
                     variant="outline" 
                     size="sm" 
                     className="mt-2"
-                    onClick={() => useSuggestion(suggestion)}
+                    onClick={() => handleUseSuggestion(suggestion)}
                   >
                     Use This Claim
                   </Button>
